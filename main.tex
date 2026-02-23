@@ -1,35 +1,491 @@
-\documentclass[12pt,a4paper]{article}
+\documentclass[14pt,a4paper]{extreport}
 
+% --- Пакетна частина (Преамбула) ---
 \usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
-\usepackage{geometry}
+\usepackage[ukrainian]{babel}
+\usepackage[T2A]{fontenc}
+
+% --- Пакет Tikz для малювання схем
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing, shapes.geometric}
+
+% --- Пакет Pgfplots для графіків функцій
+\usepackage{pgfplots}
+
+\usepackage{amsmath}
+
+% Налаштування полів згідно з методичкою (стор. 11): ліве - 3 см, інші - 2 см 
+\usepackage[left=30mm, right=20mm, top=20mm, bottom=20mm]{geometry}
+
+\usepackage{times} % Основний шрифт Times New Roman
 \usepackage{setspace}
-\usepackage{parskip}
+\usepackage{indentfirst} % Абзацний відступ для першого рядка
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage[none]{hyphenat}
+\sloppy
 
-\geometry{margin=2.5cm}
-\onehalfspacing
+% --- Налаштування нумерації (ПРАВИЙ ВЕРХНІЙ КУТ) ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{} 
+\fancyhead[R]{\thepage} % Номер сторінки справа вгорі
+\renewcommand{\headrulewidth}{0pt}
 
-\title{Diploma Thesis}
-\author{Andriy Vohar}
-\date{\today}
+% Переозначуємо стиль plain, щоб номер був справа вгорі навіть на сторінках з заголовками
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyhead[R]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+}
+
+% Налаштування абзацного відступу (1.25 см)
+\setlength{\parindent}{1.25cm}
+\onehalfspacing % Міжрядковий інтервал 1.5
+
+% Налаштування заголовків (ВЕЛИКИМИ ЛІТЕРАМИ по центру) 
+\titleformat{\chapter}[display]
+  {\normalfont\large\bfseries\centering}{}{0pt}{\large\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
 
 \begin{document}
 
-\maketitle
+% --- СТОРІНКА 1: ТИТУЛЬНА (Номер не ставиться) ---
+\begin{titlepage}
+    \thispagestyle{empty}
+    \centering
+    \small
+    МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ\\
+    ДЕРЖАВНИЙ ВИЩИЙ НАВЧАЛЬНИЙ ЗАКЛАД\\
+    «УЖГОРОДСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ»\\
+    ФАКУЛЬТЕТ МАТЕМАТИКИ ТА ЦИФРОВИХ ТЕХНОЛОГІЙ\\
+    Кафедра системного аналізу і теорії оптимізації
+    
+    \vfill
+    \Large \textbf{ВОГАР АНДРІЙ ЮРІЙОВИЧ}
+    
+    \vspace{1cm}
+    \Large \textbf{ОПТИМІЗАЦІЯ ВЕЛИКИХ МОВНИХ МОДЕЛЕЙ ДЛЯ РЕСУРС-ОБМЕЖЕНИХ ОБЧИСЛЮВАЛЬНИХ СИСТЕМ}
+    
+    \vfill
+    \large 124 Системний аналіз
+    
+    \vfill
+    \textbf{Дипломна робота на здобуття освітнього ступеня бакалавра}
+    
+    \vfill
+    \begin{flushright}
+        \begin{minipage}{0.5\textwidth}
+            \textbf{Науковий керівник:} \\
+            Корник Олександр Володимирович \\
+            асистент каф. САТО
+        \end{minipage}
+    \end{flushright}
+    
+    \vfill
+    \textbf{Ужгород – 2026}
+\end{titlepage}
 
-\tableofcontents
+% --- СТОРІНКИ 2-4: МІСЦЕ ДЛЯ ІНШИХ МАТЕРІАЛІВ ---
+% Якщо у вас тут будуть інші сторінки, просто додавайте їх перед Змістом.
+% Зараз я використовую команду \setcounter{page}{5} нижче.
+
 \newpage
 
-\section{Introduction}
+\newpage
+\chapter*{АНОТАЦІЯ}
+Це дослідження присвячене аналізу та розробці методів підвищення обчислювальної ефективності великих мовних моделей (LLM) для їхнього розгортання на пристроях з обмеженими апаратними ресурсами.
 
-This is the introduction section of the diploma thesis.
+У роботі розглянуто сучасний стан розвитку нейронних мереж та виявлено основні бар'єри, що заважають локальному використанню потужних моделей на мобільних і вбудованих системах. Детально розглянуто та систематизовано основні методи стиснення моделей: квантування (Quantization); прунінг (Pruning); а також використання ефективних архітектур, таких як BitNet та дистильовані моделі.
 
-\section{Main Content}
+Об'єктом дослідження є процеси оптимізації великих мовних моделей. Предметом дослідження виступають алгоритми квантування, прунінгу та архітектурні модифікації, що дозволяють зменшити обчислювальні витрати без критичної втрати точності генерації. Практична цінність роботи полягає у визначенні найбільш ефективних конфігурацій оптимізації для забезпечення балансу між швидкістю роботи моделі (tokens per second) та її інтелектуальними можливостями на слабких обчислювальних системах.
 
-This is the main content section.
+\vspace{0.5cm}
+\noindent \textbf{Ключові слова:} великі мовні моделі (LLM), оптимізація нейронних мереж, квантування, прунінг, ресурс-обмежені системи, BitNet, штучний інтелект на пристроях (Edge AI).
 
-\section{Conclusion}
+\newpage
+\chapter*{ABSTRACT}
+\begin{otherlanguage}{english}
+This research is dedicated to the analysis and development of methods for increasing the computational efficiency of Large Language Models (LLMs) for their deployment on devices with limited hardware resources.
 
-This is the conclusion section.
+The study examines the current state of neural network development and identifies the primary barriers preventing the local use of powerful models on mobile and embedded systems. Key model compression methods are detailed and systematized: quantization (Post-Training Quantization and Quantization-Aware Training); pruning (structured and unstructured approaches); and the implementation of efficient architectures, such as BitNet and distilled models.
+
+The object of the study is the process of optimizing large language models. The subject of the study involves quantization algorithms, pruning techniques, and architectural modifications that allow for the reduction of computational overhead without a critical loss in generation accuracy. The practical value of the work lies in determining the most effective optimization configurations to achieve a balance between inference speed (tokens per second) and the model's intellectual performance on resource-constrained computing systems.
+
+
+\vspace{0.5cm}
+\noindent \textbf{Keywords:} Large Language Models (LLM), neural network optimization, quantization, pruning, resource-constrained systems, BitNet, Edge AI.
+\end{otherlanguage}
+
+% --- СТОРІНКА 5: ЗМІСТ ---
+\newpage
+\pagenumbering{arabic}
+\setcounter{page}{5} % Встановлюємо, що ЗМІСТ - це 5-та сторінка
+
+\chapter*{ЗМІСТ}
+\makeatletter
+\@starttoc{toc}
+\makeatother
+
+% --- СТОРІНКА 6: ВСТУП ---
+\newpage
+
+\chapter*{ВСТУП}
+\addcontentsline{toc}{chapter}{ВСТУП}
+
+Великі мовні моделі (Large Language Models, LLMs) у сучасному світі стали невід'ємною частиною життя для багатьох людей, що використовують штучний інтелект. Вони вкючають у себе обробку природньої мови, машинний переклад, генерацію тексту та інше. Проте, через величезну кількість параметрів, що входять у мовну модель створюються великі обчислювальні вимоги. Запуск таких моделей на ресурс-обмежених пристроях, таких як мобільні телефони або вбудовані системи, стає викликом.
+
+Аналіз та оптимізація мовних моделей є критично важливим для забезпечення їхньої доступності, масштабованості та ефективності на різних платформах. Квантування (Qantinization), прунінг (pruning) та розробка ефективних архітектур є основними  у цій галузі, які дозволяють зменшити розмір самих моделей, зменшити вимоги до заліза та за рахунок цього покращити їх продуктивність без значної втрати якості виводу моделі.
+
+Кінцевою метою є оптимізація вже наявних мовних моделей для роботи на слабких пристроях при одночасному збереженні їхньої функціональності, точності та якості, що сприятиме широкому впровадженні штучного інтелекту в повсякденне життя.
+
+Об'єкт дослідження: Процеси оптимізації великих мовних моделей.
+
+Предмет дослідження: методи квантування, прунінгу та розробки ефективних архітектур для запуску великих мовних моделей на ресурс-обмежених пристроях.
+
+Мета дослідження: Розробка та впровадження ефективних методів оптимізації великих мовних моделей для їхнього запуску на слабких пристроях.
+
+Це дослідження може бути корисним для дослідників та пересічної зацікавленої людини у галузі штучного інтелекту, машинного навчання, роботи мовних моделей. Також для інженерів, які працюють та шукають шляхи для впровадженням великих мовних моделей у реальні застосунки на малопотужних пристроях.
+
+
+% --- РОЗДІЛ 1. Теоретична частина ---
+
+\newpage
+% Згідно з методичкою (стор. 12), заголовки розділів ВЕЛИКИМИ ЛІТЕРАМИ
+\chapter{РОЗДІЛ 1. ТЕОРЕТИЧНІ ОСНОВИ ОПТИМІЗАЦІЇ ВЕЛИКИХ МОВНИХ МОДЕЛЕЙ}
+
+\section{Концепція та архітектурні особливості великих мовних моделей}
+% Тут ви описуєте LLM, увагу (Attention) та параметри.
+
+\subsection{Визначення та еволюція мовних моделей}
+% Тут варто дати базове визначення: що таке LLM, як вони навчаються на величезних масивах текстових даних для передбачення наступного токена. Опишіть перехід від рекурентних мереж (RNN/LSTM) до архітектури Transformer, яка стала фундаментом для сучасних моделей.
+
+LLM (Large Language Model) - це велика мовна модель, яка є типом штучного інтелекту, навченого розуміти та генерувати людську мову [1, с. 4].
+
+Історію розвитку великих мовних моделей доцільно розділити на кілька ключових етапів відповідно до технологічних підходів, що домінували у певні періоди:
+
+\begin{enumerate}
+    \item \textbf{Статистичні методи та прості вектори (до 2013 р.):}
+    \begin{itemize}
+        \item \textit{Bag-of-Words (BoW):} ранні підходи представляли текст як «мішок слів», підраховуючи частоту їх появи. Це дозволяло перетворити текст на числові дані, проте втрачався порядок слів та їхній семантичний контекст [1, с. 6].
+        \item \textit{N-gram:} моделі передбачали наступне слово, враховуючи лише $N$ попередніх одиниць тексту. Це було ефективно для вузьких завдань, але не дозволяло опрацьовувати довгі контекстні зв'язки [1, с. 88].
+    \end{itemize}
+
+    \item \textbf{Векторні представлення слів (2013 р.):}
+    \begin{itemize}
+        \item \textit{Word2Vec:} технологічна революція, що дозволила створювати вбудовування (embeddings) – щільні вектори, де слова зі схожим значенням розташовані поруч у математичному просторі. Наприклад, векторні операції дозволяли розв'язувати аналогії типу «король – чоловік + жінка = королева» [1, с. 8]. Проте кожне слово мало лише один фіксований вектор (наприклад, слово «bank» мало однакове значення і для фінансової установи, і для берега річки) [1, с. 11].
+    \end{itemize}
+
+    \item \textbf{Рекурентні мережі та контекст (2014--2016 рр.):}
+    \begin{itemize}
+        \item \textit{RNN та LSTM:} ці архітектури обробляли текст послідовно, зберігаючи «пам’ять» про попередні токени. Це дозволило враховувати порядок слів і локальний контекст [1, с. 11].
+        \item \textit{Увага (Attention):} механізм, що дозволив моделям фокусуватися на найбільш релевантних словах у реченні при виконанні завдань (наприклад, машинного перекладу), замість стиснення всього речення в один вектор [1, с. 13].
+    \end{itemize}
+
+    \item \textbf{Ера Трансформерів (2017 р. – теперішній час):}
+    \begin{itemize}
+        \item \textit{Transformer (2017):} публікація статті «Attention Is All You Need» представила архітектуру, яка повністю відмовилася від рекурентності на користь механізму самоуваги (Self-Attention). Це дозволило обробляти всі слова паралельно, що значно пришвидшило навчання на великих масивах даних та заклало фундамент для сучасних LLM [1, с. 15].
+    \end{itemize}
+\end{enumerate}
+
+Сучасні LLM є переважно генеративними моделями (decoder-only) та побудовані на архітектурі трансформерів (Transformers). Вони працюють за принципом авторегресії: модель отримає на вхід текст і намагається передбачити, яке слово (або частина слова) має йти наступним [1, с. 12].
+
+Сприйняття тексту моделлю відрізняється від людського: на вхід подається не символьний ряд, а послідовність числових значень. Для них текст розбивається на менші одиниці - токени (слова, частини слів). Кожен токен перетворюється на числовий вектор, який модель може обробляти математично. Процес перетворення тексту на токени називається ембеддингом (embedding) [1, с. 6]. Розглянемо приклад речення «Я люблю пити Кока-Колу», яке розбивається на окремі токени:
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|l|c|c|c|c|c|c|}
+        \hline
+        \textbf{Текст}  & Я & люблю & пити & Кока & - & Колу \\ \hline
+        \textbf{Токен}  & [251] & [14321] & [842] & [3210] & [12] & [4512] \\ \hline
+    \end{tabular}
+    \caption{Приклад токенізації речення}
+    \label{table:tokenization}
+\end{table}
+
+Слід зауважити, що ідентифікатори токенів залежать від словника конкретної моделі (наприклад, GPT-5 або Llama-4).
+
+Завдяки механізму уваги (self-attention), модель здатна враховувати котекст усього речення, абзацу та більше, розуміючи зв'язки між словами, навіть якщо вони далеко одне від одного [1, с. 16].
+
+Процес навчання у мовних моделей називається попереднім навчанням (pretraining), оскільки вона не навчається в процесі роботи, а тільки перед початком використання. Модель навчається на величезних масивах тексту (книги, веб-сайти), вивчаючи граматику, факти про світ та логічні зв'язки без участі вчителя (self-supervised learning) [1, с. 26].
+
+
+\subsection{Архітектура Transformer та механізм самоуваги (Self-Attention)}
+% Це ядро вашої теоретичної частини. Поясніть, як механізм Multi-Head Attention дозволяє моделі обробляти контекст паралельно, а не послідовно. Це важливо, бо саме обчислення "уваги" створює основне навантаження на ресурси (особливо на пам'ять при великій довжині контексту).
+
+Архітектура Transformer, представлена у 2017 році в статті «Attention Is All You Need», стала фундаментом для сучасних великих мовних моделей (LLM) [2]. Вона замінила рекурентні мережі (RNN), дозволивши тренувати моделі паралельно та значно ефективніше обробляти довгі послідовності даних.
+
+Архітектура Трансформера сладається з двох блоків: енкодера (encoder) та декодера (decoder) складених один на одного, як показано на рис. 1.1.
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.5cm,
+        terminal/.style={rectangle, rounded corners, draw, fill=gray!10, text width=5cm, align=center, font=\small},
+        process/.style={rectangle, draw, thick, fill=blue!10, text width=5cm, align=center, minimum height=1cm, font=\bfseries},
+        vector/.style={ellipse, draw, fill=orange!10, font=\itshape\small},
+        arrow/.style={thick, ->, >=stealth}
+    ]
+        % Вузли схеми
+        \node (input) [terminal] {Вхід: [Я] [люблю] [Кока-Колу]};
+        \node (encoder) [process, below of=input] {ENCODER \\ (Аналіз контексту)};
+        \node (context) [vector, below of=encoder] {Контекстний вектор};
+        \node (decoder) [process, below of=context] {DECODER \\ (Генерація відповіді)};
+        \node (output) [terminal, below of=decoder] {Вихід: [I] [love] [Coca-Cola]};
+
+        % Стрілки
+        \draw [arrow] (input) -- (encoder);
+        \draw [arrow] (encoder) -- (context);
+        \draw [arrow] (context) -- (decoder);
+        \draw [arrow] (decoder) -- (output);
+
+    \end{tikzpicture}
+    \caption{Спрощена схема взаємодії Encoder та Decoder в архітектурі Transformer}
+    \label{fig:transformer_logic}
+\end{figure}
+
+Архітектура сучасних моделей базується на послідовному накладанні однакових структурних елементів. Основними будівельними одиницями виступають блоки трансформера (Transformer Blocks), які повторюються у структурі моделі велику кількість разів. Наприклад, у моделі GPT-3 кількість таких блоків (шарів) сягає 96 [3].
+
+Кожен такий блок складається з двох основних частин:
+\begin{enumerate}
+    \item \textit{Шар уваги} (Attention Layer) - дозволяє моделі фокусуватися на різних частинах вхідної послідовності.
+    \item \textit{Нейронна мережа прямого поширення} (Feedforward Neural Network - FFN/MLP) - здійснює обробку отриманих векторів.
+\end{enumerate}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.2cm,
+        block/.style={rectangle, draw, fill=blue!10, text width=6cm, align=center, minimum height=0.8cm, font=\small},
+        arrow/.style={thick, ->, >=stealth}
+    ]
+        % Вузли схеми
+        \node (output) [block, fill=green!10] {\textbf{Вихід (наступний шар)}};
+        \node (norm2) [block, above of=output, node distance=1.5cm] {Layer Normalization};
+        \node (ff) [block, above of=norm2] {Feed-Forward Neural Network};
+        \node (norm1) [block, above of=ff] {Layer Normalization};
+        \node (att) [block, above of=norm1] {Multi-Head Attention Layer};
+        \node (input) [block, above of=att, fill=orange!10] {\textbf{Вхідні ембеддинги / Попередній шар}};
+
+        % Стрілки (рух знизу вгору згідно з вашою логікою)
+        \draw [arrow] (input) -- (att);
+        \draw [arrow] (att) -- (norm1);
+        \draw [arrow] (norm1) -- (ff);
+        \draw [arrow] (ff) -- (norm2);
+        \draw [arrow] (norm2) -- (output);
+
+        % Декоративна дужка "x96"
+        \draw [decorate, decoration={brace, amplitude=10pt, mirror}] 
+            (input.south west) -- (output.north west) 
+            node [midway, left, xshift=-0.5cm, font=\bfseries] {x96};
+
+    \end{tikzpicture}
+    \caption{Схематичне представлення ієрархічної структури блоків у моделі GPT-3}
+    \label{fig:gpt3_arch}
+\end{figure}
+
+Механізм самоуваги (Self-Attention) дозволяє моделі фокусуватися на різних частинах вхідної послідовності під час обробки кожного токена. Це забезпечує глибоке розуміння контексту: наприклад, у реченні «Собака побіг за білкою, бо \textbf{вона}...» механізм уваги допомагає визначити, чи стосується займенник «вона» собаки чи білки, аналізуючи синтаксичні та семантичні зв'язки [1, с. 88].
+
+Математично цей процес базується на трьох проекційних матрицях, що створюються під час навчання: Запит ($Q$ – Query), Ключ ($K$ – Key) та Значення ($V$ – Value). Основна операція обчислення уваги виражається формулою:
+
+\begin{equation}
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\end{equation}
+
+де $d_k$ – розмірність векторів ключів, що використовується для масштабування, а функція \text{softmax} нормалізує отримані бали, перетворюючи їх на ймовірності, сума яких дорівнює одиниці.
+
+Функція \text{softmax} відіграє ключову роль у механізмі уваги, оскільки вона перетворює вектор довільних дійсних чисел $z$ у вектор ймовірностей, де кожен елемент знаходиться в діапазоні $(0, 1)$. Математично вона визначається як:
+
+\begin{equation}
+\sigma(z)_i = \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}
+\end{equation}
+
+де $z_i$ – вхідний бал для $i$-го токена, а знаменник є сумою експонент усіх вхідних балів $K$ токенів у послідовності. Це забезпечує те, що модель приділяє найбільшу «увагу» найбільш релевантним елементам, пригнічуючи шум від менш важливих токенів.
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            axis lines = left,
+            xlabel = $z_i$,
+            ylabel = {$\sigma(z)_i$},
+            xmin=-5, xmax=5,
+            ymin=0, ymax=1,
+            grid=both,
+            grid style={line width=.1pt, draw=gray!10},
+            major grid style={line width=.2pt, draw=gray!50},
+            width=10cm, height=6cm,
+            title={Функція Softmax для двох значень ($z_1, z_2$)}
+        ]
+            % Графік Softmax для z1, при фіксованому z2 = 0
+            \addplot [
+                domain=-5:5, 
+                samples=100, 
+                color=blue,
+                thick
+            ]
+            {exp(x)/(exp(x) + exp(0))};
+            \addlegendentry{$\frac{e^{z_1}}{e^{z_1} + e^0}$}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Графічна інтерпретація функції Softmax}
+    \label{fig:softmax_graph}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[
+        node distance=2.5cm,
+        auto,
+        block/.style={rectangle, draw, thick, minimum width=6cm, align=center, rounded corners=2pt},
+        data/.style={rectangle, draw, fill=gray!5, minimum width=6cm, font=\small},
+        arrow/.style={thick, ->, >=stealth}
+    ]
+        % Вхідні логіти з візуалізацією
+        \node (input) [data] {
+            \textbf{Вхідні логіти ($z$)} \\
+            $[10.0, \quad 5.0, \quad 1.0]$ \\
+            \begin{tikzpicture}[scale=0.3]
+                \fill[blue!40] (0,0) rectangle (3,0.8);
+                \fill[blue!40] (4,0) rectangle (5.5,0.8);
+                \fill[blue!40] (8,0) rectangle (8.5,0.8);
+            \end{tikzpicture}
+        };
+        
+        % Блок Softmax з формулою
+        \node (softmax) [block, fill=blue!10, below of=input] {
+            \textbf{Функція Softmax} \\
+            $\sigma(z)_i = \frac{e^{z_i}}{\sum e^{z_j}}$
+        };
+        
+        % Вихідні ймовірності з акцентом на домінування
+        \node (output) [data, fill=green!5, below of=softmax] {
+            \textbf{Ймовірності (Probabilities)} \\
+            $[0.993, \quad 0.006, \quad 0.001]$ \\
+            \begin{tikzpicture}[scale=0.3]
+                \fill[green!60!black] (0,0) rectangle (9,0.8);
+                \fill[green!60!black] (10,0) rectangle (10.1,0.8);
+                \fill[green!60!black] (11,0) rectangle (11.05,0.8);
+            \end{tikzpicture}
+        };
+        
+        % Стрілки
+        \draw [arrow] (input) -- (softmax);
+        \draw [arrow] (softmax) -- (output);
+    \end{tikzpicture}
+    \caption{Схема перетворення логітів у ймовірнісний розподіл функцією Softmax}
+    \label{fig:softmax_detailed}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[node distance=1.5cm, every node/.style={fill=white, font=\small}]
+        % Спрощена візуалізація Softmax
+        \node (token1) [draw, rectangle] {Собака (0.1)};
+        \node (token2) [draw, rectangle, right of=token1, xshift=1.2cm] {побіг (0.05)};
+        \node (token3) [draw, rectangle, right of=token2, xshift=1.2cm] {білкою (0.8)};
+        \node (token4) [draw, rectangle, right of=token3, xshift=1.2cm] {вона (0.05)};
+        
+        % Стрілка зв'язку
+        \path [draw, ->, line width=1pt, bend left] (token3) edge node [above, font=\tiny] {max weight} (token4);
+    \end{tikzpicture}
+    \caption{Візуалізація розподілу ваг уваги після функції Softmax для слова «вона»}
+    \label{fig:softmax_viz}
+\end{figure}
+
+Для того щоб модель могла вловлювати різні типи зв'язків одночасно (наприклад, граматичні та смислові), використовується багатоголова увага (Multi-Head Attention). У цьому підході механізм самоуваги дублюється декілька разів. Кожна «голова» працює паралельно з власним набором матриць $Q, K, V$, після чого результати об'єднуються (конкатенуються) [1, с. 90].
+
+
+\subsection{Параметри моделі та вагові коефіцієнти}
+% Поясніть, що таке "параметри" (ваги та зміщення). Наведіть приклад: модель з 7 мільярдами параметрів (7B) зберігає величезну матрицю чисел, кожне з яких визначає силу зв'язку між нейронами. Саме кількість параметрів визначає інтелектуальні можливості моделі, але й прямо пропорційно впливає на вимоги до ОЗП.
+
+Параметри — це внутрішні змінні моделі, які вона оптимізує в процесі навчання на масивах даних. Вони визначають функціональне перетворення вхідних даних у вихідні передбачення [1, с. 8]. Математично параметри сучасних архітектур складаються з двох основних компонентів: ваг ($w$) та зміщень ($b$).
+
+Вагові коефіцієнти (Weights, $w$) становлять переважну більшість параметрів нейронної мережі. У сучасних архітектурах типу Transformer процес їх функціонування та зберігання має такі особливості [1, с. 8]:
+
+\begin{itemize}
+    \item \textbf{Принцип роботи:} ваги організовані у вигляді проекційних матриць, зокрема матриць Запиту ($W_Q$), Ключа ($W_K$), Значення ($W_V$) та матриць повнозв’язних шарів прямого поширення (Feed-Forward layers). Вхідні дані у вигляді токенів множаться на ці матриці для формування нових контекстних представлень (рис. 1.6).
+    
+    \begin{figure}[h!]
+        \centering
+        \begin{tikzpicture}[scale=0.8]
+            % Матриця входу
+            \draw[fill=blue!10] (0,0) rectangle (1,3) node[midway, rotate=90] {Input ($X$)};
+            \node at (1.5, 1.5) {$\times$};
+            % Матриця ваг
+            \draw[fill=orange!20] (2,0) rectangle (7,3) node[midway] {Weights ($W_Q$)};
+            \node at (7.5, 1.5) {$=$};
+            % Матриця результату
+            \draw[fill=green!10] (8,0) rectangle (9,3) node[midway, rotate=90] {Output};
+        \end{tikzpicture}
+        \caption{Візуалізація процесу лінійного перетворення вхідних даних через матрицю ваг}
+        \label{fig:matrix_mult}
+    \end{figure}
+
+    \item \textbf{Формати зберігання:} традиційно ваги зберігаються як числа з плаваючою комою (floating-point numbers), наприклад, у форматах FP32 (32-біт) або FP16 (16-біт). Це забезпечує високу точність обчислень, проте вимагає значного обсягу пам'яті та обчислювальних потужностей.
+\end{itemize}
+
+Зміщення (Biases, $b$) — додаткові змінні, які дозволяють зміщувати результат активації нейрона, аналогічно до вільного члена в лінійному рівнянні $y = wx + b$ [4]. 
+
+Масштаб сучасних моделей вимагає колосальних обчислювальних ресурсів. Наприклад, якщо GPT-1 налічувала 117 мільйонів параметрів, то GPT-3 вже має 175 мільярдів [1, с. 20]. Популярні моделі середнього розміру (наприклад, Llama-3-7B) містять близько 7 мільярдів параметрів. Саме ця кількість визначає інтелектуальні можливості моделі, але прямо пропорційно впливає на вимоги до обсягу оперативної пам'яті (ОЗП). Для зберігання моделі 7B у форматі FP32 потрібно близько 28 ГБ відеопам'яті, що робить її недоступною для більшості споживчих пристроїв без методів оптимізації.
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            ybar,
+            symbolic x coords={GPT-1, GPT-2, GPT-3},
+            xtick=data,
+            ylabel={Параметри (млрд)},
+            nodes near coords,
+            nodes near coords align={vertical},
+            width=10cm, height=6cm,
+            bar width=1cm,
+            fill=blue!30
+        ]
+            \addplot coordinates {(GPT-1, 0.117) (GPT-2, 1.5) (GPT-3, 175)};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Порівняння кількості параметрів у різних поколіннях моделей GPT}
+    \label{fig:gpt_scaling}
+\end{figure}
+
+\subsection{Представлення даних: від FP32 до цілочисельних типів}
+% Опишіть формати збереження ваг. Це критична точка для переходу до практичної частини:
+% FP32 (Single Precision): Стандарт для навчання, де кожна вага займає 4 байти.
+% FP16/BF16 (Half Precision): Стандарт для сучасного виводу (inference), 2 байти на вагу.
+% INT8 / INT4: Цілочисельні формати, що використовуються при квантуванні для стиснення моделі.
+% Поясніть концепцію динамічного діапазону та точності (precision).
+
+\section{Аналіз потреб LLM у ресурсах обчислювальних систем}
+% Опис потреб у VRAM, пропускній здатності та CPU.
+
+\section{Огляд методів стиснення та оптимізації моделей}
+% Квантування, прунінг, дистиляція.
+
+\section{Ефективне донавчання в умовах обмежених ресурсів}
+% LoRA, QLoRA.
+
+\section{Огляд програмних рішень для запуску оптимізованих моделей}
+% llama.cpp, vLLM тощо.
+
+
+% --- СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ ---
+
+\newpage
+\chapter*{СПИСОК ВИКОРИСТАНИХ ДЖЕРЕЛ}
+\addcontentsline{toc}{chapter}{Список використаних джерел}
+
+\begin{enumerate}
+    % Приклад оформлення книги з одним автором (згідно з Додатком Ж методички)
+    \item Alammar J., Grootendorst M. Hands-On Large Language Models: Language Understanding and Generation. O'Reilly Media, 2024. 412 p.
+    \item Vaswani A., Shazeer N., Parmar N. et al. Attention Is All You Need. arXiv:1706.03762 [cs.CL]. 2017. URL: https://arxiv.org/abs/1706.03762 (дата звернення: 17.02.2026).
+    \item Transforming agency: On the mode of existence of large language models - Scientific Figure on ResearchGate. Available from: https://www.researchgate.net/figure/Schematic-of-the-GPT-3-processing-architecture-as-a-standardized-reference-for-LLM_fig1_394849833 (дата звернення: 17.02.2026)
+    \item Jacob B., Kligys S., Chen B. et al. Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference. arXiv:1712.05877 [cs.LG]. 2017. URL: https://arxiv.org/abs/1712.05877 (дата звернення: 18.02.2026).
+    \item Cheng Y., Wang D., Zhou P., Zhang T. A Survey of Model Compression and Acceleration for Deep Neural Networks. arXiv:1710.09282 [cs.LG]. 2020. URL: https://arxiv.org/abs/1710.09282 (дата звернення: 18.02.2026).
+    
+    % Приклад оформлення електронного ресурсу (URL)
+    % \item Про вищу освіту: Закон України від 01.07.2014 р. № 1556-VII. Дата оновлення: 28.09.2017. URL: http://zakon2.rada.gov.ua/laws/show/1556-18 (дата звернення: 15.11.2017).
+\end{enumerate}
 
 \end{document}
