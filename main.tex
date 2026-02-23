@@ -459,6 +459,114 @@ LLM (Large Language Model) - це велика мовна модель, яка �
 % INT8 / INT4: Цілочисельні формати, що використовуються при квантуванні для стиснення моделі.
 % Поясніть концепцію динамічного діапазону та точності (precision).
 
+Перехід від чисел з плаваючою комою високої розрядності до цілочисельних типів зниженої точності є основою методів квантування (Quantization). Це критично важливо для оптимізації пропускної здатності пам'яті та енергоефективності при розгортанні LLM на пристроях з обмеженими ресурсами.
+
+Еволюцію та градацію форматів представлення даних можна структурувати наступним чином:
+
+\begin{enumerate}
+    \item \textbf{FP32 (Single-Precision Floating-Point):} стандарт для етапу навчання. Кожен параметр займає 4 байти (32 біти), що дозволяє зберігати значення з високою точністю та широким динамічним діапазоном [1, с. 201]. Проте для моделі з 7 млрд параметрів це потребує близько 28 ГБ пам'яті, що перевищує можливості більшості споживчих систем.
+    
+    \item \textbf{FP16 та BF16 (Half-Precision):} проміжний етап, де розмір параметра зменшується до 2 байтів (16 бітів). Формат bfloat16 (Brain Floating Point) став стандартом для сучасних LLM, оскільки він зберігає той самий динамічний діапазон, що й FP32, жертвуючи лише точністю мантиси.
+    
+    \item \textbf{INT8 (8-бітні цілі числа):} квантування дозволяє відобразити (map) континуум значень FP32 у дискретний діапазон цілих чисел від -128 до 127. Це зменшує об’єм моделі у 4 рази порівняно з FP32. При цьому цілочисельна арифметика виконується процесорами (CPU/NPU) значно швидше за арифметику з плаваючою комою [4].
+    
+    \item \textbf{INT4 та спеціалізовані формати (QLoRA):} зниження розрядності до 4 біт дозволяє зберігати ваги моделі 7B у межах 3.5–4 ГБ VRAM [1, с. 367]. У методах типу QLoRA використовується нормалізований 4-бітний формат (NF4), що дозволяє підтримувати високу якість генерації при радикальному стисненні.
+    
+    \item \textbf{Тернарні та бінарні формати (BitNet 1.58b):} екстремальний підхід, де ваги обмежуються значеннями $\{-1, 0, 1\}$. Це потребує лише 1.58 біта на параметр і замінює енерговитратне множення матриць на операції додавання та віднімання, що є революційним для мобільних систем [6].
+\end{enumerate}
+
+Для наочного порівняння ефективності різних форматів нижче наведено таблицю \ref{table:memory_req}, що демонструє вимоги до пам'яті для моделі об'ємом 7 мільярдів параметрів.
+
+\begin{table}[h!]
+    \small
+    \centering
+    \caption{Вплив формату даних на споживання пам'яті моделі 7B}
+    \label{table:memory_req}
+    \begin{tabular}{|l|c|c|l|}
+        \hline
+        \textbf{Тип даних} & \textbf{Біти} & \textbf{Об'єм (ГБ)} & \textbf{Сфера застосування} \\ \hline
+        FP32 & 32 & $\sim$28.0 & Навчання (Training) \\ \hline
+        FP16 / BF16 & 16 & $\sim$14.0 & Стандартний інференс \\ \hline
+        INT8 & 8 & $\sim$7.0 & Квантування для серверів \\ \hline
+        INT4 & 4 & $\sim$3.5 & Споживчі ПК та смартфони \\ \hline
+        BitNet & 1.58 & $\sim$1.4 & Спеціалізовані пристрої \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[node distance=0.1cm, font=\tiny]
+        % FP32
+        \node at (-1.5, 0.5) {\small FP32};
+        \draw[fill=red!20] (0,0) rectangle (0.4, 1) node[midway] {S};
+        \draw[fill=blue!20] (0.4,0) rectangle (3.2, 1) node[midway] {Exponent (8 bit)};
+        \draw[fill=green!20] (3.2,0) rectangle (10, 1) node[midway] {Mantissa (23 bit)};
+        
+        % INT8
+        \node at (-1.5, -1) {\small INT8};
+        \draw[fill=red!20] (0,-1.5) rectangle (0.4, -0.5) node[midway] {S};
+        \draw[fill=yellow!20] (0.4,-1.5) rectangle (2.8, -0.5) node[midway] {Integer (7 bit)};
+        
+        \draw[<->, dashed] (0, -0.2) -- (10, -0.2) node[midway, below] {32 bits (4 bytes)};
+        \draw[<->, dashed] (0, -1.7) -- (2.8, -1.7) node[midway, below] {8 bits (1 byte)};
+    \end{tikzpicture}
+    \caption{Порівняння фізичного об'єму пам'яті форматів FP32 та INT8}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        \draw[->] (-0.5,0) -- (5,0) node[right] {FP32 Value};
+        \draw[->] (0,-0.5) -- (0,4) node[above] {INT8 Level};
+        
+        % Крива
+        \draw[gray, smooth] (0,0) .. controls (1,0.5) and (2,3.5) .. (4,4);
+        
+        % Сходинки квантування
+        \draw[blue, thick] (0,0) -- (0.5,0) -- (0.5,0.5) -- (1,0.5) -- (1,1.5) -- (2,1.5) -- (2,3) -- (3,3) -- (3,4) -- (4,4);
+        
+        \node[blue, anchor=west] at (4,3.5) {Quantized (Steps)};
+        \node[gray, anchor=west] at (4,1) {Original (Continuous)};
+    \end{tikzpicture}
+    \caption{Візуалізація дискретизації значень при переході до цілочисельного формату}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[
+        % Налаштування стилів елементів
+        block/.style={draw, rectangle, align=center, minimum width=3cm, minimum height=1cm, fill=blue!5, font=\small},
+        bitblock/.style={draw, rectangle, align=center, minimum width=3cm, minimum height=1cm, fill=green!5, font=\small},
+        val/.style={draw, circle, minimum size=1cm, font=\small},
+        op/.style={font=\Large\bfseries},
+        label_style/.style={font=\small\bfseries}
+    ]
+
+    % --- Верхній ряд (Традиційне обчислення) ---
+    \node (label1) [label_style, color=red!70!black] at (3, 1.5) {Heavy Multiplication (Стандарт)};
+    
+    \node (fp) [block] at (0,0) {FP16 Weight \\ $0.00234$};
+    \node (op1) [op] at (3,0) {$\times$};
+    \node (in1) [val] at (6,0) {Input};
+    
+    \draw [thick, ->] (fp) -- (op1);
+    \draw [thick, <-] (op1) -- (in1);
+
+    % --- Нижній ряд (BitNet) ---
+    \node (label2) [label_style, color=green!50!black] at (3, -1.5) {Lightweight Addition (BitNet)};
+    
+    \node (bit) [bitblock] at (0,-3) {BitNet Weight \\ $\{-1, 0, 1\}$};
+    \node (op2) [op] at (3,-3) {$\pm$};
+    \node (in2) [val] at (6,-3) {Input};
+    
+    \draw [thick, ->] (bit) -- (op2);
+    \draw [thick, <-] (op2) -- (in2);
+
+    \end{tikzpicture}
+    \caption{Концептуальна різниця між стандартним обчисленням та тернарним підходом BitNet}
+    \label{fig:bitnet_comparison}
+\end{figure}
+
 \section{Аналіз потреб LLM у ресурсах обчислювальних систем}
 % Опис потреб у VRAM, пропускній здатності та CPU.
 
@@ -482,9 +590,10 @@ LLM (Large Language Model) - це велика мовна модель, яка �
     % Приклад оформлення книги з одним автором (згідно з Додатком Ж методички)
     \item Alammar J., Grootendorst M. Hands-On Large Language Models: Language Understanding and Generation. O'Reilly Media, 2024. 412 p.
     \item Vaswani A., Shazeer N., Parmar N. et al. Attention Is All You Need. arXiv:1706.03762 [cs.CL]. 2017. URL: \url{https://arxiv.org/abs/1706.03762} (дата звернення: 17.02.2026).
-    \item Transforming agency: On the mode of existence of large language models - Scientific Figure on ResearchGate. Available from: \url{https://www.researchgate.net/figure/Schematic-of-the-GPT-3-processing-architecture-as-a-standardized-reference-for-LLM_fig1_394849833} (дата звернення: 17.02.2026)
+    \item Transforming agency: On the mode of existence of large language models - Scientific Figure on ResearchGate. URL: \url{https://www.researchgate.net/figure/Schematic-of-the-GPT-3-processing-architecture-as-a-standardized-reference-for-LLM_fig1_394849833} (дата звернення: 17.02.2026)
     \item Jacob B., Kligys S., Chen B. et al. Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference. arXiv:1712.05877 [cs.LG]. 2017. URL: \url{https://arxiv.org/abs/1712.05877} (дата звернення: 18.02.2026).
     \item Cheng Y., Wang D., Zhou P., Zhang T. A Survey of Model Compression and Acceleration for Deep Neural Networks. arXiv:1710.09282 [cs.LG]. 2020. URL: \url{https://arxiv.org/abs/1710.09282} (дата звернення: 18.02.2026).
+    \item Shuming Ma, Hongyu Wang, Lingxiao Ma, Lei Wang, Wenhui Wang, Shaohan Huang, Li Dong, Ruiping Wang, Jilong Xue, Furu Wei. The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits. arXiv:2402.17764 [cs.CL]. 2024. URL: \url{https://arxiv.org/abs/2402.17764} (дата звернення: 23.02.2026).
     
     % Приклад оформлення електронного ресурсу (URL)
     % \item Про вищу освіту: Закон України від 01.07.2014 р. № 1556-VII. Дата оновлення: 28.09.2017. URL: http://zakon2.rada.gov.ua/laws/show/1556-18 (дата звернення: 15.11.2017).
