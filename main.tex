@@ -25,9 +25,9 @@
     keywordstyle=\color{blue},   % Ключові слова без жирного, щоб уникнути відсутнього шрифту T2A/pcr/b/n
     columns=flexible,            % Уникає розриву UTF-8 послідовностей при вирівнюванні колонок
     breaklines=true,         % ДОЗВОЛЯЄ ПЕРЕНОС РЯДКІВ
-    breakatwhitespace=true, % Переносити не тільки на пробілах, а й посеред слів, якщо треба
+    breakatwhitespace=true,  % Переносити тільки на пробілах, щоб уникнути розриву UTF-8 послідовностей
     inputencoding=utf8,      % Підтримка UTF-8 у лістингах
-    extendedchars=true,      % Підтримка кирилиці
+    extendedchars=false,     % Disabled to avoid \lst@EC UTF-8 issues (listing content is ASCII-only)
     frame=single,            % Рамка навколо коду
     numbers=left,            % Нумерація рядків зліва
     numberstyle=\tiny,
@@ -917,10 +917,10 @@ def benchmark():
     results = []
 
     for model_name in model_list:
-        print(f"\n>>> Тестування: {model_name}")
+        print(f"\n>>> Testing: {model_name}")
         details = get_model_details(model_name)
         
-        # Контейнер для пікових значень
+        # Container for peak values
         peaks = {"cpu": 0, "ram": 0, "gpu": 0, "vram": 0}
         stop_monitor = False
 
@@ -933,17 +933,17 @@ def benchmark():
                 peaks["vram"] = max(peaks["vram"], v)
                 time.sleep(0.5)
 
-        # Запускаємо моніторинг у фоні
+        # Start monitoring in background
         monitor_thread = threading.Thread(target=monitor)
         monitor_thread.start()
 
         try:
-            # Збільшений таймаут до 300 секунд для важких моделей як DeepSeek
+            # Increased timeout to 300s for heavy models like DeepSeek
             requests.post(f"{OLLAMA_URL}/generate", 
                           json={"model": model_name, "prompt": "Why is system analysis important?", "stream": False},
                           timeout=300)
         except Exception as e:
-            print(f"    Помилка: {e}")
+            print(f"    Error: {e}")
         finally:
             stop_monitor = True
             monitor_thread.join()
@@ -961,10 +961,10 @@ def benchmark():
             "Peak_VRAM_MB": peaks["vram"]
         })
 
-    # Збереження результатів
+    # Save results
     df = pd.DataFrame(results)
     df.to_csv("llm_system_analysis_results.csv", index=False)
-    print("\n[Готово] Дані збережено в llm_system_analysis_results.csv")
+    print("\n[Done] Data saved to llm_system_analysis_results.csv")
 
 if __name__ == "__main__":
     benchmark()
