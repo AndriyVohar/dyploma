@@ -20,13 +20,13 @@
 
 \lstset{
     language=Python,
-    basicstyle=\ttfamily\small, 
+    basicstyle=\ttfamily\small,
     keywordstyle=\color{blue},   % Ключові слова без жирного, щоб уникнути відсутнього шрифту T2A/pcr/b/n
     columns=flexible,            % Уникає розриву UTF-8 послідовностей при вирівнюванні колонок
     breaklines=true,         % ДОЗВОЛЯЄ ПЕРЕНОС РЯДКІВ
-    breakatwhitespace=true,  % Переносити тільки на пробілах, щоб уникнути розриву UTF-8 послідовностей
+    breakatwhitespace=true, % Переносити не тільки на пробілах, а й посеред слів, якщо треба
     inputencoding=utf8,      % Підтримка UTF-8 у лістингах
-    extendedchars=false,     % Disabled to avoid \lst@EC UTF-8 issues (listing content is ASCII-only)
+    extendedchars=true,      % Підтримка кирилиці
     frame=single,            % Рамка навколо коду
     numbers=left,            % Нумерація рядків зліва
     numberstyle=\tiny,
@@ -693,8 +693,150 @@ T_{gen} = \frac{BW}{M_{weights}} \quad [\text{токенів/сек}]
 
 Таким чином, проведений аналіз підтверджує, що для успішного розгортання моделей об'ємом понад 8B на споживчих пристроях стандартного квантування (Q4\_K\_M) недостатньо. Це обґрунтовує необхідність дослідження методів інтенсивнішої оптимізації.
 
+
 \section{Огляд методів стиснення та оптимізації моделей}
-% Квантування, прунінг, дистиляція.
+
+Проблема розгортання великих мовних моделей на периферійних пристроях зумовила появу ряду технік стиснення (Model Compression). Основною метою цих методів є мінімізація обчислювальних витрат та об'єму займаної пам'яті при збереженні функціональних показників точності моделі.
+
+\subsection{Квантування (Quantization)}
+
+Квантування є фундаментальною технікою оптимізації, що базується на дискретизації континууму значень вагових коефіцієнтів. Процес полягає у переході від представлення чисел з плаваючою комою високої розрядності (FP32, FP16) до дискретних значень меншої бітності (INT8, INT4, NF4).
+
+Математично афінна схема квантування дозволяє відобразити дійсне значення $x$ у квантоване $x_q$ за формулою:
+$$x = S \cdot (x_q - Z)$$
+де $S$ (Scale) визначає крок дискретизації, а $Z$ (Zero-point) забезпечує зміщення для коректного представлення асиметричних розподілів даних [7]. 
+
+Вибір моменту впровадження квантування в життєвий цикл моделі:
+\begin{enumerate}
+    \item \textbf{Post-Training Quantization (PTQ):} застосовується до вже навченої моделі. Ключовим викликом тут є калібрування (calibration) — процес аналізу статистичних розподілів активацій на невеликій вибірці даних. PTQ є найбільш ресурсоефективним методом, проте він схильний до «катастрофічного забування» при зниженні розрядності нижче 8 біт [7].
+    \item \textbf{Quantization-Aware Training (QAT):} передбачає інтеграцію помилок квантування безпосередньо в процес навчання. Використання градієнтного спуску дозволяє моделі компенсувати втрати точності за рахунок адаптації ваг до дискретної сітки значень [7].
+\end{enumerate}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[scale=0.9]
+        % Осі
+        \draw[->] (-0.5,0) -- (6,0) node[right] {FP32 Value};
+        \draw[->] (0,-0.5) -- (0,4) node[above] {INT8 Levels};
+        
+        % Оригінальна функція (гладка)
+        \draw[thick, blue!30, smooth] (0,0) .. controls (1,0.5) and (3,3.5) .. (5,4);
+        \node[blue!50] at (5.5, 3.5) {\footnotesize Original};
+        
+        % Квантована функція (сходинки)
+        \draw[thick, red, step=0.5cm] (0,0) grid (0,0); % для стилю
+        \draw[thick, red] (0,0) -| (0.8,0.5) -| (1.6,1.2) -| (2.4,2.0) -| (3.2,2.8) -| (4.0,3.5) -| (5,4);
+        
+        % Позначення помилки
+        \draw[<->, dashed, gray] (2,1.6) -- (2,2.3) node[midway, right] {\tiny Quantization Error};
+        
+        \node[red] at (4,-0.5) {\footnotesize Discrete Steps};
+    \end{tikzpicture}
+    \caption{Процес дискретизації значень ваг при квантуванні}
+\end{figure}
+
+\subsection{Проріджування (Pruning)}
+
+Метод прунінгу базується на гіпотезі про надлишковість (redundancy) параметрів у глибоких нейронних мережах. Доведено, що значна частина вагових коефіцієнтів має близькі до нуля значення і мінімально впливає на кінцевий результат [8].
+
+Розрізняють два стратегічні підходи:
+\begin{itemize}
+    \item \textbf{Неструктурований прунінг:} видалення окремих ваг (вагових зв'язків) незалежно від їхнього розташування. Хоча це забезпечує високий коефіцієнт теоретичного стиснення, на практиці такі моделі потребують спеціалізованих апаратних прискорювачів для роботи з розрідженими (sparse) матрицями [9].
+    \item \textbf{Структурований прунінг:} видалення цілісних логічних блоків (нейронів або шарів). Це призводить до безпосередньої зміни архітектури моделі, що дозволяє досягти прискорення на будь-якому стандартному обладнанні без втрати кеш-локальності обчислень [9].
+\end{itemize}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.7, 
+        weight/.style={draw, rectangle, fill=blue!60, minimum size=0.35cm},
+        pruned/.style={draw, rectangle, fill=white, minimum size=0.35cm, dashed, draw=gray}
+    ]
+        % Матриця 1 (Центр в 0,0)
+        \draw[thick, fill=blue!5] (-1.2,-1.2) rectangle (1.2,1.2);
+        \foreach \i in {-0.7,-0.35,0,0.35,0.7}
+            \foreach \j in {-0.7,-0.35,0,0.35,0.7}
+                \node at (\i, \j) [weight] {};
+        \node at (0, -2) {\small\bfseries Оригінальна матриця};
+
+        % Матриця 2 (Центр в 5,0)
+        \begin{scope}[xshift=5cm]
+            \draw[thick, fill=blue!5] (-1.2,-1.2) rectangle (1.2,1.2);
+            \foreach \i in {-0.7,-0.35,0,0.35,0.7}
+                \foreach \j in {-0.7,-0.35,0,0.35,0.7}
+                    \node at (\i, \j) [weight] {};
+            \node at (-0.35, 0.35) [pruned] {}; \node at (0.35, -0.35) [pruned] {};
+            \node at (0.7, 0.7) [pruned] {}; \node at (-0.7, -0.7) [pruned] {};
+            \node at (0, -2) {\small\bfseries Неструктурований};
+        \end{scope}
+
+        % Матриця 3 (Центр в 10,0)
+        \begin{scope}[xshift=10cm]
+            \draw[thick, fill=blue!5] (-1.2,-1.2) rectangle (1.2,1.2);
+            \foreach \i in {-0.7,-0.35,0} 
+                \foreach \j in {-0.7,-0.35,0,0.35,0.7}
+                    \node at (\i, \j) [weight] {};
+            \foreach \i in {0.35,0.7}
+                \foreach \j in {-0.7,-0.35,0,0.35,0.7}
+                    \node at (\i, \j) [pruned] {};
+            \node at (0, -2) {\small\bfseries Структурований};
+        \end{scope}
+    \end{tikzpicture}
+    \caption{Порівняння стратегій проріджування нейронних мереж}
+\end{figure}
+
+\subsection{Параметрично-ефективне донавчання (PEFT) та LoRA}
+
+Сучасним стандартом адаптації LLM є методи низькорангової апроксимації. В основі LoRA (\textit{Low-Rank Adaptation}) лежить припущення, що зміна ваг при донавчанні моделі має низьку внутрішню розмірність (\textit{intrinsic dimension}). 
+
+Замість оновлення повної матриці $W \in \mathbb{R}^{m \times n}$, метод додає до неї декомпозицію:
+$$\Delta W = B \times A, \quad A \in \mathbb{R}^{k \times n}, B \in \mathbb{R}^{m \times k}$$
+де ранг $k \ll \min(m, n)$ [7]. Технологія \textbf{QLoRA} розвиває цей підхід, використовуючи 4-бітне квантування базової моделі в поєднанні з типом даних \textit{NormalFloat4}, що забезпечує інформаційну щільність на рівні теоретичного межі при збереженні стабільності навчання.
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[scale=0.85]
+        % Опорні точки
+        \node (in) at (0,0) {\textbf{Input $x$}};
+        \draw[fill] (1.5,0) circle (2pt) node (split) {};
+        
+        % Основний блок (W)
+        \draw[thick, fill=gray!10] (2.5,-1.5) rectangle (5.5,1.5);
+        \node at (4,0) {\small \begin{tabular}{c} Заморожені \\ ваги $W$ \\ ($d \times d$) \end{tabular}};
+        
+        % Блок А
+        \draw[thick, fill=orange!15] (2.5,2.5) rectangle (4,3.5);
+        \node at (3.25,3) {\footnotesize Матриця $A$};
+        
+        % Блок B
+        \draw[thick, fill=orange!15] (5,2.5) rectangle (6.5,3.5);
+        \node at (5.75,3) {\footnotesize Матриця $B$};
+        
+        % Плюс і Вихід
+        \draw[thick] (8,0) circle (10pt) node (plus) {\Large $+$};
+        \node (out) at (10,0) {\textbf{Output $h$}};
+        
+        % Стрілки (ручне малювання)
+        \draw[thick, ->] (in) -- (split);
+        \draw[thick, ->] (split) -- (2.5,0);
+        \draw[thick, ->] (split) |- (2.5,3);
+        \draw[thick, ->] (4,3) -- (5,3);
+        \draw[thick, ->] (5.5,0) -- (plus);
+        \draw[thick, ->] (6.5,3) -| (plus);
+        \draw[thick, ->] (plus) -- (out);
+        
+        % Підписи
+        \node[above] at (7,0) {\footnotesize $Wx$};
+        \node[right] at (8,2) {\footnotesize $BAx$};
+    \end{tikzpicture}
+    \caption{Схема низькорангової адаптації (LoRA)}
+\end{figure}
+
+\subsection{Дистиляція знань (Knowledge Distillation)}
+
+Дистиляція реалізує концепцію «вчитель--учень», де складна модель передає компактній моделі не лише кінцеві мітки класів, а й внутрішню структуру ймовірнісних розподілів (\textit{dark knowledge}). 
+
+TODO: Використання функції втрат на основі розходження Кульбака-Лейблера (\textit{KL Divergence}) дозволяє моделі-студенту вивчати логіку прийняття рішень вчителя. У контексті LLM це особливо ефективно для створення вузькоспеціалізованих моделей, які за продуктивністю на конкретних завданнях не поступаються моделям, що на порядок більші за розміром.
 
 \section{Ефективне донавчання в умовах обмежених ресурсів}
 % LoRA, QLoRA.
@@ -717,6 +859,9 @@ T_{gen} = \frac{BW}{M_{weights}} \quad [\text{токенів/сек}]
     \item Jacob B., Kligys S., Chen B. et al. Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference. arXiv:1712.05877 [cs.LG]. 2017. URL: \url{https://arxiv.org/abs/1712.05877} (дата звернення: 18.02.2026).
     \item Cheng Y., Wang D., Zhou P., Zhang T. A Survey of Model Compression and Acceleration for Deep Neural Networks. arXiv:1710.09282 [cs.LG]. 2020. URL: \url{https://arxiv.org/abs/1710.09282} (дата звернення: 18.02.2026).
     \item Shuming Ma, Hongyu Wang, Lingxiao Ma, Lei Wang, Wenhui Wang, Shaohan Huang, Li Dong, Ruiping Wang, Jilong Xue, Furu Wei. The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits. arXiv:2402.17764 [cs.CL]. 2024. URL: \url{https://arxiv.org/abs/2402.17764} (дата звернення: 23.02.2026).
+    \item https://huggingface.co/docs/optimum/concept\_guides/quantization
+    \item https://en.wikipedia.org/wiki/Model\_compression
+    \item Davis Blalock, Jose Javier Gonzalez Ortiz, Jonathan Frankle, John Guttag. What is the State of Neural Network Pruning?. arXiv:2003.03033 [cs.LG]. 2020. URL: \url{https://arxiv.org/abs/2003.03033} (дата звернення 25.02.2026).
     
     % Приклад оформлення електронного ресурсу (URL)
     % \item Про вищу освіту: Закон України від 01.07.2014 р. № 1556-VII. Дата оновлення: 28.09.2017. URL: http://zakon2.rada.gov.ua/laws/show/1556-18 (дата звернення: 15.11.2017).
@@ -771,10 +916,10 @@ def benchmark():
     results = []
 
     for model_name in model_list:
-        print(f"\n>>> Testing: {model_name}")
+        print(f"\n>>> Тестування: {model_name}")
         details = get_model_details(model_name)
         
-        # Container for peak values
+        # Контейнер для пікових значень
         peaks = {"cpu": 0, "ram": 0, "gpu": 0, "vram": 0}
         stop_monitor = False
 
@@ -787,17 +932,17 @@ def benchmark():
                 peaks["vram"] = max(peaks["vram"], v)
                 time.sleep(0.5)
 
-        # Start monitoring in background
+        # Запускаємо моніторинг у фоні
         monitor_thread = threading.Thread(target=monitor)
         monitor_thread.start()
 
         try:
-            # Increased timeout to 300s for heavy models like DeepSeek
+            # Збільшений таймаут до 300 секунд для важких моделей як DeepSeek
             requests.post(f"{OLLAMA_URL}/generate", 
                           json={"model": model_name, "prompt": "Why is system analysis important?", "stream": False},
                           timeout=300)
         except Exception as e:
-            print(f"    Error: {e}")
+            print(f"    Помилка: {e}")
         finally:
             stop_monitor = True
             monitor_thread.join()
@@ -815,10 +960,10 @@ def benchmark():
             "Peak_VRAM_MB": peaks["vram"]
         })
 
-    # Save results
+    # Збереження результатів
     df = pd.DataFrame(results)
     df.to_csv("llm_system_analysis_results.csv", index=False)
-    print("\n[Done] Data saved to llm_system_analysis_results.csv")
+    print("\n[Готово] Дані збережено в llm_system_analysis_results.csv")
 
 if __name__ == "__main__":
     benchmark()
