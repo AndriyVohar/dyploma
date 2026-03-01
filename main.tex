@@ -25,9 +25,9 @@
     keywordstyle=\color{blue},   % Ключові слова без жирного, щоб уникнути відсутнього шрифту T2A/pcr/b/n
     columns=flexible,            % Уникає розриву UTF-8 послідовностей при вирівнюванні колонок
     breaklines=true,         % ДОЗВОЛЯЄ ПЕРЕНОС РЯДКІВ
-    breakatwhitespace=true,  % Переносити тільки на пробілах, щоб уникнути розриву UTF-8 послідовностей
+    breakatwhitespace=true, % Переносити не тільки на пробілах, а й посеред слів, якщо треба
     inputencoding=utf8,      % Підтримка UTF-8 у лістингах
-    extendedchars=false,     % Disabled to avoid \lst@EC UTF-8 issues (listing content is ASCII-only)
+    extendedchars=true,      % Підтримка кирилиці
     frame=single,            % Рамка навколо коду
     numbers=left,            % Нумерація рядків зліва
     numberstyle=\tiny,
@@ -738,12 +738,12 @@ $$x = S \cdot (x_q - Z)$$
 
 \subsection{Проріджування (Pruning)}
 
-Метод прунінгу базується на гіпотезі про надлишковість (redundancy) параметрів у глибоких нейронних мережах. Доведено, що значна частина вагових коефіцієнтів має близькі до нуля значення і мінімально впливає на кінцевий результат [8].
+Метод прунінгу полягає у фізичному або логічному видаленні певних параметрів (ваг, нейронів або навіть цілих шарів), які найменше впливають на кінцевий результат роботи моделі.
 
-Розрізняють два стратегічні підходи:
+Розрізняють два стратегічні підходи (зображені на рисунку 1.13):
 \begin{itemize}
     \item \textbf{Неструктурований прунінг:} видалення окремих ваг (вагових зв'язків) незалежно від їхнього розташування. Хоча це забезпечує високий коефіцієнт теоретичного стиснення, на практиці такі моделі потребують спеціалізованих апаратних прискорювачів для роботи з розрідженими (sparse) матрицями [9].
-    \item \textbf{Структурований прунінг:} видалення цілісних логічних блоків (нейронів або шарів). Це призводить до безпосередньої зміни архітектури моделі, що дозволяє досягти прискорення на будь-якому стандартному обладнанні без втрати кеш-локальності обчислень [9].
+    \item \textbf{Структурований прунінг:} видалення цілісних логічних блоків (нейронів або шарів). Це призводить до безпосередньої зміни архітектури моделі, що дозволяє досягти серйозного прискорення [9].
 \end{itemize}
 
 \begin{figure}[h!]
@@ -760,8 +760,8 @@ $$x = S \cdot (x_q - Z)$$
                 \node at (\i, \j) [weight] {};
         \node at (0, -2) {\small\bfseries Оригінальна матриця};
 
-        % Матриця 2 (Центр в 5,0)
-        \begin{scope}[xshift=5cm]
+        % Матриця 2 (Центр в 6,0)
+        \begin{scope}[xshift=6cm]
             \draw[thick, fill=blue!5] (-1.2,-1.2) rectangle (1.2,1.2);
             \foreach \i in {-0.7,-0.35,0,0.35,0.7}
                 \foreach \j in {-0.7,-0.35,0,0.35,0.7}
@@ -771,8 +771,8 @@ $$x = S \cdot (x_q - Z)$$
             \node at (0, -2) {\small\bfseries Неструктурований};
         \end{scope}
 
-        % Матриця 3 (Центр в 10,0)
-        \begin{scope}[xshift=10cm]
+        % Матриця 3 (Центр в 12,0)
+        \begin{scope}[xshift=12cm]
             \draw[thick, fill=blue!5] (-1.2,-1.2) rectangle (1.2,1.2);
             \foreach \i in {-0.7,-0.35,0} 
                 \foreach \j in {-0.7,-0.35,0,0.35,0.7}
@@ -784,6 +784,93 @@ $$x = S \cdot (x_q - Z)$$
         \end{scope}
     \end{tikzpicture}
     \caption{Порівняння стратегій проріджування нейронних мереж}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \begin{tikzpicture}[
+        neuron/.style={circle, draw, thick, minimum size=8mm},
+        input/.style={neuron, fill=blue!30},
+        hidden/.style={neuron, fill=yellow!40},
+        output/.style={neuron, fill=green!30},
+        pruned/.style={neuron, fill=gray!5, draw=gray!20}, % Стиль для видалених нейронів
+        arrow/.style={-Stealth, thick},
+        connection/.style={draw=gray!60, thin},
+        pruned_connection/.style={draw=gray!15, thin} % Стиль для видалених зв'язків
+    ]
+    
+    % --- ЛІВА МЕРЕЖА LLM ---
+    
+    % Вхідний шар
+    \node[input] (in1) at (0, 1.5) {$x_1$};
+    \node[input] (in2) at (0, -1.5) {$x_2$};
+    
+    % Прихований шар 1
+    \foreach \i in {1,...,4}
+        \node[hidden] (h1-\i) at (1.5, 3.75 - 1.5*\i) {};
+    
+    % Прихований шар 2
+    \foreach \i in {1,2}
+        \node[hidden] (h2-\i) at (3, 2.25 - 1.5*\i) {};
+    
+    % Вихідний шар
+    \node[output] (out) at (4.5, 0) {};
+    
+    % Зв'язки (всі активні)
+    \foreach \i in {1,2}
+        \foreach \j in {1,...,4}
+            \draw[connection] (in\i) -- (h1-\j);
+    
+    \foreach \i in {1,...,4}
+        \foreach \j in {1,2}
+            \draw[connection] (h1-\i) -- (h2-\j);
+    
+    \foreach \i in {1,2}
+        \draw[connection] (h2-\i) -- (out);
+    
+    \node[font=\Large\sffamily] at (2.25, -3) {LLM};
+    
+    % --- ПРАВА МЕРЕЖА Pruned LLM ---
+    \begin{scope}[xshift=9cm]
+        % Вхідний шар
+        \node[input] (rin1) at (0, 1.5) {$x_1$};
+        \node[input] (rin2) at (0, -1.5) {$x_2$};
+    
+        % Прихований шар 1 (2 активні, 2 видалені)
+        \node[hidden] (rh1-1) at (1.5, 2.25) {};
+        \node[pruned] (rh1-2) at (1.5, 0.75) {};
+        \node[hidden] (rh1-3) at (1.5, -0.75) {};
+        \node[pruned] (rh1-4) at (1.5, -2.25) {};
+    
+        % Прихований шар 2 (1 активний, 1 видалений)
+        \node[hidden] (rh2-1) at (3, 0.75) {};
+        \node[pruned] (rh2-2) at (3, -0.75) {};
+    
+        \node[output] (rout) at (4.5, 0) {};
+    
+        % Малюємо спочатку "тьмяні" зв'язки
+        \foreach \i in {1,2}
+            \foreach \j in {1,...,4}
+                \draw[pruned_connection] (rin\i) -- (rh1-\j);
+        \foreach \i in {1,...,4}
+            \foreach \j in {1,2}
+                \draw[pruned_connection] (rh1-\i) -- (rh2-\j);
+        \foreach \i in {1,2}
+            \draw[pruned_connection] (rh2-\i) -- (rout);
+    
+        % Малюємо активні зв'язки (тільки між активними нейронами)
+        \foreach \i in {1,2} {
+            \draw[connection] (rin\i) -- (rh1-1);
+            \draw[connection] (rin\i) -- (rh1-3);
+        }
+        \draw[connection] (rh1-1) -- (rh2-1);
+        \draw[connection] (rh1-3) -- (rh2-1);
+        \draw[connection] (rh2-1) -- (rout);
+    
+        \node[font=\Large\sffamily] at (2.25, -3) {Pruned LLM};
+    \end{scope}
+    \end{tikzpicture}
+    \caption{Порівняння звичайної та прунованої LLM}
 \end{figure}
 
 \subsection{Параметрично-ефективне донавчання (PEFT) та LoRA}
@@ -933,12 +1020,12 @@ def benchmark():
                 peaks["vram"] = max(peaks["vram"], v)
                 time.sleep(0.5)
 
-        # Start monitoring in background
+        # Monitoring
         monitor_thread = threading.Thread(target=monitor)
         monitor_thread.start()
 
         try:
-            # Increased timeout to 300s for heavy models like DeepSeek
+            # Timeout 300 seconds
             requests.post(f"{OLLAMA_URL}/generate", 
                           json={"model": model_name, "prompt": "Why is system analysis important?", "stream": False},
                           timeout=300)
@@ -961,7 +1048,7 @@ def benchmark():
             "Peak_VRAM_MB": peaks["vram"]
         })
 
-    # Save results
+    # Saving results
     df = pd.DataFrame(results)
     df.to_csv("llm_system_analysis_results.csv", index=False)
     print("\n[Done] Data saved to llm_system_analysis_results.csv")
